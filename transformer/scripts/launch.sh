@@ -1,0 +1,1 @@
+npm --prefix "services/operator_ui" run start

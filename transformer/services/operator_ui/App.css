@@ -1,0 +1,29 @@
+.button__container {
+  margin-top: 200px;
+  text-align: center;
+}
+.button {
+  background-color:green;
+  border: none;
+  color: rgb(255, 255, 255);
+  font-size: 16px;
+  height: 40px;
+  width: 200px;
+  padding: 10px;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.centerTable { 
+  margin: 0px auto; 
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.centerTableCell {
+  padding-right: 5px;
+  padding-left: 5px;
+  font-weight: bold;
+  font-size: larger;
+  border: 2px solid black;
+}

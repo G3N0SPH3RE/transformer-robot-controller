@@ -1,0 +1,186 @@
+machine_setup:
+  plc_installed: False
+  state_transition_timeout: 3
+  state_transition_poll_period: 0.1
+  #pallet_lift_height_mm: 50
+
+communication:
+  baudrate: 115200
+  communication_type: 'rs485'
+  communication_timeout: 0
+  receive_chunk_size: 1024
+  update_delay: 0.001
+  receive_attempts: 10
+  receive_delay: 0.005
+  float_match_tolerance: 0.001
+  rs485_intertransmission_delay: 0.05
+
+# storage:
+#   machine_specific_file_prefix: "machine_specific_"
+
+#units in real units?
+axes:
+  x_axis:
+    axis_address: 1
+    axis_label: 'x'
+    axis_function: 'reach'
+
+    comm_format: 'binary'
+    maximum_update_attempts: 10
+
+    default_velocity: 80.0
+    default_acceleration: 60
+    default_deceleration: 60
+    default_jerk: 10000
+    default_deceleration_jerk: 10000
+
+    position_deadband: 0.05
+    scale_per_rev: 12.382
+    feedback_resolution: 65536
+    units: 'mm'
+    zero_offset: 0
+    safe_position: 0
+    negative_limit: -45
+    positive_limit: 1500
+    maximum_velocity: 40
+    maximum_acceleration: 80
+    maximum_jerk: 10000
+
+    number_of_inputs: 8
+    number_of_outputs: 4
+
+    number_of_status_bits: 2
+    status_bit_definitions: ['power_enabled', 'error_status']
+
+#  y_axis:
+#    axis_address: 4
+#    axis_label: 'y'
+#    axis_function: 'traverse'
+#    comm_format: 'ascii'
+#    maximum_update_attempts: 10
+#    default_velocity: 0.5
+#    default_acceleration: 1
+#    default_deceleration: 1
+#    default_jerk: 1000
+#    default_deceleration_jerk: 1000
+#    negative_limit: 0
+#    positive_limit: 24
+
+  z_axis:
+    axis_address: 3
+    axis_label: 'z'
+    axis_function: 'vertical'
+    comm_format: 'binary'
+    maximum_update_attempts: 10
+    default_velocity: 30.0
+    default_acceleration: 20
+    default_deceleration: 20
+    default_jerk: 1000
+    default_deceleration_jerk: 1000
+    position_deadband: 0.05
+    scale_per_rev: 5.585
+    feedback_resolution: 65536
+    units: 'mm'
+    zero_offset: 0
+    safe_position: 0
+    negative_limit: 0
+    #positive_limit: 1415
+    positive_limit: 1365
+    maximum_velocity: 40
+    maximum_acceleration: 50
+    number_of_inputs: 8
+    number_of_outputs: 4
+    number_of_status_bits: 2
+    status_bit_definitions: ['power_enabled', 'error_status']
+
+  c_axis:
+    axis_address: 2
+    axis_label: 'c'
+    axis_function: 'swing'
+    comm_format: 'binary'
+    maximum_update_attempts: 10
+    default_velocity: 10.0
+    default_acceleration: 5
+    default_deceleration: 5
+    default_jerk: 1000
+    default_deceleration_jerk: 1000
+    position_deadband: 0.05
+    #scale denominator is 91.0
+    scale_per_rev: 0.010989
+    feedback_resolution: 65536
+    units: 'deg'
+    zero_offset: 0
+    safe_position: 0
+    negative_limit: -120
+    positive_limit: 195
+    maximum_velocity: 10
+    maximum_acceleration: 5
+    maximum_jerk: 1000
+    number_of_inputs: 8
+    number_of_outputs: 4
+    number_of_status_bits: 2
+    status_bit_definitions: ['power_enabled', 'error_status']
+
+io:
+  output:
+    # XT1:421
+    gripper_open:
+      bound_axis_label: 'c'
+      point_address: 0
+
+    # XT1:422
+    gripper_close:
+      bound_axis_label: 'z'
+      point_address: 0
+
+#    # XT1:423
+#    gripper_unclamp:
+#      bound_axis_label: 'x'
+#      point_address: 0
+
+    # XT1:409
+    table_unclamp:
+      bound_axis_label: 'x'
+      point_address: 0
+
+    # XT1:225
+    alarm:
+      bound_axis_label: '*'
+      point_address: 3
+
+  input:
+    # XT1:202
+    not_estop:
+      bound_axis_label: '*'
+      point_address: 2
+
+    # XT1:425
+    enable:
+      bound_axis_label: '*'
+      point_address: 3
+
+    # XT1:426
+    run:
+      bound_axis_label: '*'
+      point_address: 4
+
+    # XT1:601
+    x_axis_home:
+      bound_axis_label: 'x'
+      point_address: 7
+
+    # XT1:604
+    z_axis_home:
+      bound_axis_label: 'z'
+      point_address: 7
+
+    # XT1:608
+    c_axis_home:
+      bound_axis_label: 'c'
+      point_address: 7
+
+
+#    gripper_air_supply:
+#      bound_axis_label: 'c'
+#      point_address: 1
+

@@ -1,0 +1,6 @@
+communication:
+  status_socket: 5555
+  command_socket: 5556
+  motion_data_stream_server_address: 127.0.0.1
+  motion_data_stream_port: 9870
+  fastapi_socket: 8000

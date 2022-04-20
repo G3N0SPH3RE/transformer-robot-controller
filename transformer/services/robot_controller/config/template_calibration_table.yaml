@@ -1,0 +1,111 @@
+defaults:
+  default_clearance_height: 450.0
+  default_reach_safe_position: 0.0
+
+racks:
+  rack_position_1:
+    #reach: 1065.0
+    reach: 890.071
+    traverse: 0.0
+    vertical: 266.995
+    swing: -30.677
+
+    clearance_height: 350.0
+    reach_safe_position: 0.0
+
+  rack_position_2:
+    reach: 988.0089
+    traverse: 0.0
+    vertical: 280.087
+    swing: 46.993
+
+    clearance_height: 350.0
+    reach_safe_position: 0.0
+
+  rack_position_3:
+    reach: 997.43
+    traverse: 0.0
+    vertical: 267.20
+    swing: 8.13
+
+    clearance_height: 370.0
+
+  rack_position_4:
+    reach: 1050.0
+    traverse: 0.0
+    vertical: 268.0
+    swing: 24.5
+
+    clearance_height: 370.0
+  
+  rack_position_MiR:
+    reach: 1075.80
+    traverse: 0.0
+    vertical: 94.70
+    swing: -107.52
+
+    clearance_height: 140.0
+
+machines:
+  DVF4:
+    configuration:
+      table:
+        control_type: 'festo'
+        #control_type: 'compax3'
+        festo_manifold_address: "192.168.1.114"
+        nominal_supply_pressure_bar: 5.5
+        allowable_pressure_delta_bar: 0.5
+        
+        compax3_unclamp_io_point:
+          bound_axis_label: 'x'
+          point_address: 0
+
+        compax3_clamp_io_point: 
+          bound_axis_label: 'x'
+          point_address: 1
+
+      door:
+        open_confirmation_input_io_point:
+          bound_axis_label: 'x'
+          point_address: 0
+        
+
+    position_calibration:
+      reach: 1208.832
+      traverse: 0.0
+      vertical: 246.997
+      swing: 95.824
+
+      clearance_height: 350.0
+      reach_safe_position: 0.0
+  
+  DVFtest:
+    configuration:
+      table:
+        #control_type: 'festo'
+        control_type: 'compax3'
+        festo_manifold_address: "192.168.1.114"
+
+        
+        compax3_unclamp_io_point:
+          bound_axis_label: 'x'
+          point_address: 0
+
+        compax3_clamp_io_point: 
+          bound_axis_label: 'x'
+          point_address: 1
+
+      # door:
+      #   open_confirmation_input_io_point:
+      #     bound_axis_label: 'x'
+      #     point_address: 0
+        
+
+    position_calibration:
+      reach: 987.621
+      traverse: 0.0
+      vertical: 278.928
+      swing: 46.993
+
+      clearance_height: 350.0
+      reach_safe_position: 0.0

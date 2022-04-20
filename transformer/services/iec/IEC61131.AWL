@@ -1,0 +1,2282 @@
+(* C:\Users\robyl_000\Documents\Formlogic\Projects\Tending Cell\PC Code\transformer-robot-controller\IEC\IEC61131.PRO *)
+
+
+(* The data types *)
+
+TYPE ADD_NODE_STATES :
+(
+	ADD_NODE_INIT								:=	0,
+	ADD_NODE_WAIT_1SEC						:=	1,
+	ADD_NODE_RD_VENDOR_ID					:=	2,
+	ADD_NODE_WAIT_RSP_1						:=	3,
+	ADD_NODE_CHECK_VENDOR_ID				:=	4,
+	ADD_NODE_ADD_REMOTE_NODE				:=	5,
+	ADD_NODE_WAIT_RSP_2						:=	6,
+	ADD_NODE_CHANGE_REMOTE_NODE			:=	7,
+	ADD_NODE_WAIT_RSP_3						:=	8,
+	ADD_NODE_RESET_ERROR_LED				:=	9
+);
+END_TYPE
+
+TYPE CIA405_TRANSITION_STATE:
+(
+	START_REMOTE_NODE:=16#0010,
+	STOP_REMOTE_NODE:=16#0012,
+	ENTER_PRE_OPERATIONAL:=16#0014,
+	RESET_NODE:=16#0016,
+	RESET_COMMUNICATION:=16#0018
+);
+END_TYPE
+
+TYPE CONFIG_NODE_STATES :
+(
+	CONFIG_NODE_DISABLE_RXPDO			:=	0,
+	CONFIG_NODE_ENABLE_RXPDO			:=	1,
+	CONFIG_NODE_DISABLE_TXPDO			:=	2,
+	CONFIG_NODE_ENABLE_TXPDO			:=	3,
+	CONFIG_NODE_DONE						:=	4,
+	CONFIG_NODE_WAIT_RSP					:=	5
+);
+END_TYPE
+
+
+(* The global dictionaries *)
+
+VAR_GLOBAL
+END_VAR
+
+VAR_GLOBAL
+END_VAR
+
+
+VAR_GLOBAL
+
+END_VAR
+
+VAR_GLOBAL CONSTANT
+	MAX_REAL : 	REAL:=32700;
+	MIN_REAL :	REAL:=-32700;
+END_VAR
+
+VAR_GLOBAL
+END_VAR
+
+
+VAR_GLOBAL
+(*	AXIS_REF_Virtual: INT := 2;*)
+	AXIS_REF_LocalAxis: INT := 1;
+(*	AXIS_REF_Analog: INT:=101;*)
+(*	AXIS_REF_StepDir5V : INT:=102;*)
+(*	AXIS_REF_StepDir24V : INT:=103;*)
+(*	AXIS_REF_Encoder5V : INT:=104;*)
+(*	AXIS_REF_Encoder24V: INT:=105;*)
+	AXIS_REF_HEDA : INT:=110;
+(*	AXIS_REF_ActualPosition : INT:=111;*)
+(*	AXIS_REF_ReferencePosition : INT:=112;*)
+	AXIS_REF_CAN : INT:=113;
+	AXIS_REF_FieldBus : INT:=113;
+(*	AXIS_REF_LocalCam: INT:=114;*)
+	AXIS_REF_Physical: INT:=115;
+END_VAR
+
+VAR_GLOBAL CONSTANT
+	C3_Direction_All: INT := 0;
+	MC_Direction_Positive: INT := 1;
+	MC_Direction_Shortest_Way: INT := 2;
+	MC_Direction_Negative: INT := 3;
+	MC_Direction_Current: INT := 4;
+END_VAR
+
+VAR_GLOBAL CONSTANT
+	TouchProbeInput0: INT := 2#0000_0000;
+	TouchProbeInput1: INT := 2#0000_0001;
+	TouchProbeInput2: INT := 2#0000_0010;
+	TouchProbeInput3: INT := 2#0000_0011;
+	TouchProbeInput4: INT:= 2#0000_0100;
+	TouchProbeInput5: INT:= 2#0000_0101;
+	TouchProbeInput6: INT := 2#0000_0110;
+	TouchProbeInput7: INT := 2#0000_0111;
+
+	TouchProbeEnable0: INT :=2#0000_0000;
+	TouchProbeEnable1: INT := 2#0001_0000;
+	TouchProbeEnable2: INT := 2#0010_0000;
+	TouchProbeEnable3: INT := 2#0011_0000;
+	TouchProbeEnable4: INT := 2#0100_0000;
+	TouchProbeEnable5: INT := 2#0101_0000;
+	TouchProbeEnable6: INT := 2#0110_0000;
+	TouchProbeEnable7: INT := 2#0111_0000;
+	TouchProbeEnableNone:INT := 2#1000_0000;
+END_VAR
+
+VAR_GLOBAL
+	Direction_Memory:INT;
+END_VAR
+
+VAR_GLOBAL
+END_VAR
+
+
+VAR_CONFIG
+END_VAR
+
+
+
+(* The tasks *)
+
+RESOURCE
+
+END_RESOURCE
+
+(* The Code *)
+
+PROGRAM C3
+VAR_INPUT
+ObjectDir_ReadObjects : BOOL ;
+ObjectDir_WriteObjects : BOOL ;
+DigitalInput_Invert : WORD ;
+DigitalInput_SwapLimitSwitches : INT ;
+DigitalInput_DebounceTime : INT ;
+DigitalInput_DebounceMask : WORD ;
+DigitalOutputAddition_Value : WORD ;
+DigitalOutputAddition_Enable : WORD ;
+DigitalOutput_Auxiliary0 : BOOL ;
+DigitalOutput_Auxiliary1 : BOOL ;
+DigitalOutput_Auxiliary2 : BOOL ;
+DigitalOutput_Auxiliary3 : BOOL ;
+DigitalOutputWord_DemandState : WORD ;
+M2x_Input0_Gain : REAL ;
+M2x_Input0_Offset : REAL ;
+M2x_Input1_Gain : REAL ;
+M2x_Input1_Offset : REAL ;
+M2x_Input2_Gain : REAL ;
+M2x_Input2_Offset : REAL ;
+M2x_Input3_Gain : REAL ;
+M2x_Input3_Offset : REAL ;
+M2x_Input4_Gain : REAL ;
+M2x_Input4_Offset : REAL ;
+M2x_Input5_Gain : REAL ;
+M2x_Input5_Offset : REAL ;
+ValidParameter_Limits : BOOL ;
+ValidParameter_Global : BOOL ;
+Limit_SpeedPositive : INT ;
+Limit_SpeedNegative : INT ;
+Limit_CurrentPositive : INT ;
+Limit_CurrentNegative : INT ;
+LimitPosition_Positive : REAL ;
+LimitPosition_Negative : REAL ;
+LimitPosition_LoadControlMaxPosDiff : REAL ;
+PositioningAccuracy_Window : REAL ;
+PositioningAccuracy_FollowingErrorWindow : REAL ;
+PositioningAccuracy_FollowingErrorTimeout : TIME ;
+PositioningAccuracy_WindowTime : TIME ;
+LimitAccuracyPressureFlow_FlowReachedWindow : REAL ;
+LimitAccuracyPressureFlow_FlowReachedWindowTime : TIME ;
+LimitAccuracyPressureFlow_FlowTrackingErrorWindow : REAL ;
+LimitAccuracyPressureFlow_FlowTrackingErrorWindowTime : TIME ;
+LimitAccuracyPressureFlow_PressureReachedWindow : REAL ;
+LimitAccuracyPressureFlow_PressureReachedWindowTime : TIME ;
+LimitAccuracyPressureFlow_PressureTrackingErrorWindow : REAL ;
+LimitAccuracyPressureFlow_PressureTrackingErrorWindowTime : TIME ;
+LimitAccuracyPressureFlow_PressureLimit : REAL ;
+AnalogOutput0_Source_p : DWORD ;
+AnalogOutput0_Gain : REAL ;
+AnalogOutput0_DemandValue : INT ;
+AnalogOutput0_ActualValueReal : REAL ;
+AnalogOutput1_Source_p : DWORD ;
+AnalogOutput1_Gain : REAL ;
+AnalogOutput1_DemandValue : INT ;
+C3ToPLmC_REAL : REAL ;
+C3ToPLmC_DINT : DINT ;
+C3ToPLmC_INT1 : INT ;
+C3ToPLmC_INT2 : INT ;
+PLmCToC3_REAL : REAL ;
+PLmCToC3_DINT : DINT ;
+PLmCToC3_INT1 : INT ;
+PLmCToC3_INT2 : INT ;
+FeedForward_Speed : INT ;
+FeedForward_Accel : INT ;
+FeedForward_Current : INT ;
+FeedForward_Jerk : INT ;
+FeedForward_FilterCurrentJerk : INT ;
+FeedForward_Voltage : INT ;
+FeedForwardExternal_FilterSpeed : INT ;
+FeedForwardExternal_FilterAccel : INT ;
+FeedForwardExternal_FilterJerk : INT ;
+FeedForwardExternal_FilterSpeed_us : DINT ;
+FeedForwardExternal_FilterAccel_us : DINT ;
+FeedForwardExternal_FilterJerk_us : DINT ;
+ControllerTuning_Stiffness : INT ;
+ControllerTuning_Damping : INT ;
+ControllerTuning_Inertia : INT ;
+ControllerTuning_FilterSpeed : INT ;
+ControllerTuning_FilterAccel : INT ;
+ControllerTuning_SpeedDFactor : INT ;
+ControllerTuning_CurrentBandwidth : INT ;
+ControllerTuning_CurrentDamping : INT ;
+ControllerTuning_FilterSpeed2 : DINT ;
+ControllerTuning_FilterAccel2 : DINT ;
+ControllerTuning_FilterSpeed_us : DINT ;
+ControllerTuning_FilterAccel_us : DINT ;
+
+END_VAR
+
+VAR
+DigitalInput_Value : WORD ;
+DigitalInputAddition_Value : WORD ;
+DigitalOutputAddition_Error : WORD ;
+PositioningAccuracy_PositionReached : BOOL ;
+LimitAccuracyPressureFlow_FlowReached : BOOL ;
+LimitAccuracyPressureFlow_PressureReached : BOOL ;
+AnalogOutput0_ActualValue : REAL ;
+AnalogOutput1_ActualValue : REAL ;
+AnalogOutput1_ActualValueReal : REAL ;
+StatusPosition_DemandValue1 : REAL ;
+StatusPosition_DemandValue2 : REAL ;
+StatusPosition_DemandValue3 : REAL ;
+StatusPosition_DemandValue : REAL ;
+StatusPosition_Actual : REAL ;
+StatusPosition_FollowingError : REAL ;
+StatusPosition_FeedbackAbsoluteEmulated : REAL ;
+StatusPosition_EncoderInput5V : REAL ;
+StatusPosition_EncoderInput24V : REAL ;
+StatusPosition_DemandController : REAL ;
+StatusPosition_ActualController : REAL ;
+StatusPosition_ActualNotReset : REAL ;
+StatusPosition_LoadControlDeviationMax : REAL ;
+StatusPosition_LoadControlDeviationFiltered : REAL ;
+StatusPosition_LoadControlActual : REAL ;
+StatusPosition_Referenced : BOOL ;
+StatusSpeed_DemandValue1 : REAL ;
+StatusSpeed_DemandValue2 : REAL ;
+StatusSpeed_DemandValue3 : REAL ;
+StatusSpeed_DemandValue : REAL ;
+StatusSpeed_Actual : REAL ;
+StatusSpeed_Error : REAL ;
+StatusSpeed_ActualFiltered : REAL ;
+StatusSpeed_DemandSpeedController : REAL ;
+StatusSpeed_FeedForwardSpeed : REAL ;
+StatusSpeed_ActualScaled : REAL ;
+StatusSpeed_DemandScaled : REAL ;
+StatusSpeed_LoadControl : REAL ;
+StatusSpeed_LoadControlFiltered : REAL ;
+StatusSpeed_PositiveLimit : REAL ;
+StatusSpeed_NegativeLimit : REAL ;
+StatusSpeed_ActualUnitrpmORmps : REAL ;
+StatusSpeed_ActualNofiltUnitrpmORmps : REAL ;
+StatusSpeed_DemandSpeedControllerUnitrpmORmps : REAL ;
+StatusSpeed_ErrorUnitrpmORmps : REAL ;
+StatusSpeed_PositiveLimitUnitrpmORmps : REAL ;
+StatusSpeed_NegativeLimitUnitrpmORmps : REAL ;
+StatusAccel_DemandValue1 : DINT ;
+StatusAccel_DemandValue2 : DINT ;
+StatusAccel_DemandValue3 : DINT ;
+StatusAccel_DemandValue : DINT ;
+StatusAccel_Actual : DINT ;
+StatusAccel_ActualFilter : DINT ;
+StatusDevice_ActualCurrent : REAL ;
+StatusDevice_ActualDeviceLoad : REAL ;
+StatusDevice_ActualMotorLoad : REAL ;
+StatusDevice_DynamicMotorLoad : REAL ;
+StatusDevice_ObservedDisturbance : REAL ;
+StatusDevice_ActualDeviceLoadLowFrequency : REAL ;
+StatusTemperature_PowerStage : INT ;
+StatusTemperature_Motor : INT ;
+StatusVoltage_AuxiliaryVoltage : REAL ;
+StatusVoltage_BusVoltage : REAL ;
+StatusVoltage_AnalogInput0 : REAL ;
+StatusVoltage_AnalogInput1 : REAL ;
+StatusVoltage_M2xAnalogInput0 : REAL ;
+StatusVoltage_M2xAnalogInput1 : REAL ;
+StatusVoltage_M2xAnalogInput2 : REAL ;
+StatusVoltage_M2xAnalogInput3 : REAL ;
+StatusVoltage_M2xAnalogInput4 : REAL ;
+StatusVoltage_M2xAnalogInput5 : REAL ;
+StatusBinary_Limits : WORD ;
+StatusCurrent_Reference : REAL ;
+StatusCurrent_Actual : REAL ;
+StatusCurrent_ReferenceJerk : DINT ;
+StatusCurrent_ReferenceDINT : DINT ;
+StatusCurrent_ActualDINT : DINT ;
+StatusCurrent_PositiveLimit : DINT ;
+StatusCurrent_NegativeLimit : DINT ;
+StatusCurrent_M2xAnalogInput0 : REAL ;
+StatusCurrent_M2xAnalogInput1 : REAL ;
+StatusCurrent_M2xAnalogInput2 : REAL ;
+StatusCurrent_M2xAnalogInput3 : REAL ;
+StatusCurrent_M2xAnalogInput4 : REAL ;
+StatusCurrent_M2xAnalogInput5 : REAL ;
+StatusCurrent_ActuatingSignal_ForcePressureController : DINT ;
+ExternalSignal_Position : REAL ;
+ExternalSignal_Speed : REAL ;
+Multiturnemulation_Status : BOOL ;
+
+END_VAR
+(* @END_DECLARATION := '0' *)
+
+END_PROGRAM
+
+PROGRAM C3Array
+VAR_INPUT
+Pointer_Row : INT ;
+Col01_Row01 : REAL ;
+Col01_Row02 : REAL ;
+Col01_Row03 : REAL ;
+Col01_Row04 : REAL ;
+Col01_Row05 : REAL ;
+Col01_Row06 : REAL ;
+Col01_Row07 : REAL ;
+Col01_Row08 : REAL ;
+Col01_Row09 : REAL ;
+Col01_Row10 : REAL ;
+Col01_Row11 : REAL ;
+Col01_Row12 : REAL ;
+Col01_Row13 : REAL ;
+Col01_Row14 : REAL ;
+Col01_Row15 : REAL ;
+Col01_Row16 : REAL ;
+Col01_Row17 : REAL ;
+Col01_Row18 : REAL ;
+Col01_Row19 : REAL ;
+Col01_Row20 : REAL ;
+Col01_Row21 : REAL ;
+Col01_Row22 : REAL ;
+Col01_Row23 : REAL ;
+Col01_Row24 : REAL ;
+Col01_Row25 : REAL ;
+Col01_Row26 : REAL ;
+Col01_Row27 : REAL ;
+Col01_Row28 : REAL ;
+Col01_Row29 : REAL ;
+Col01_Row30 : REAL ;
+Col01_Row31 : REAL ;
+Col01_Row32 : REAL ;
+Col02_Row01 : REAL ;
+Col02_Row02 : REAL ;
+Col02_Row03 : REAL ;
+Col02_Row04 : REAL ;
+Col02_Row05 : REAL ;
+Col02_Row06 : REAL ;
+Col02_Row07 : REAL ;
+Col02_Row08 : REAL ;
+Col02_Row09 : REAL ;
+Col02_Row10 : REAL ;
+Col02_Row11 : REAL ;
+Col02_Row12 : REAL ;
+Col02_Row13 : REAL ;
+Col02_Row14 : REAL ;
+Col02_Row15 : REAL ;
+Col02_Row16 : REAL ;
+Col02_Row17 : REAL ;
+Col02_Row18 : REAL ;
+Col02_Row19 : REAL ;
+Col02_Row20 : REAL ;
+Col02_Row21 : REAL ;
+Col02_Row22 : REAL ;
+Col02_Row23 : REAL ;
+Col02_Row24 : REAL ;
+Col02_Row25 : REAL ;
+Col02_Row26 : REAL ;
+Col02_Row27 : REAL ;
+Col02_Row28 : REAL ;
+Col02_Row29 : REAL ;
+Col02_Row30 : REAL ;
+Col02_Row31 : REAL ;
+Col02_Row32 : REAL ;
+Col03_Row01 : INT ;
+Col03_Row02 : INT ;
+Col03_Row03 : INT ;
+Col03_Row04 : INT ;
+Col03_Row05 : INT ;
+Col03_Row06 : INT ;
+Col03_Row07 : INT ;
+Col03_Row08 : INT ;
+Col03_Row09 : INT ;
+Col03_Row10 : INT ;
+Col03_Row11 : INT ;
+Col03_Row12 : INT ;
+Col03_Row13 : INT ;
+Col03_Row14 : INT ;
+Col03_Row15 : INT ;
+Col03_Row16 : INT ;
+Col03_Row17 : INT ;
+Col03_Row18 : INT ;
+Col03_Row19 : INT ;
+Col03_Row20 : INT ;
+Col03_Row21 : INT ;
+Col03_Row22 : INT ;
+Col03_Row23 : INT ;
+Col03_Row24 : INT ;
+Col03_Row25 : INT ;
+Col03_Row26 : INT ;
+Col03_Row27 : INT ;
+Col03_Row28 : INT ;
+Col03_Row29 : INT ;
+Col03_Row30 : INT ;
+Col03_Row31 : INT ;
+Col03_Row32 : INT ;
+Col04_Row01 : INT ;
+Col04_Row02 : INT ;
+Col04_Row03 : INT ;
+Col04_Row04 : INT ;
+Col04_Row05 : INT ;
+Col04_Row06 : INT ;
+Col04_Row07 : INT ;
+Col04_Row08 : INT ;
+Col04_Row09 : INT ;
+Col04_Row10 : INT ;
+Col04_Row11 : INT ;
+Col04_Row12 : INT ;
+Col04_Row13 : INT ;
+Col04_Row14 : INT ;
+Col04_Row15 : INT ;
+Col04_Row16 : INT ;
+Col04_Row17 : INT ;
+Col04_Row18 : INT ;
+Col04_Row19 : INT ;
+Col04_Row20 : INT ;
+Col04_Row21 : INT ;
+Col04_Row22 : INT ;
+Col04_Row23 : INT ;
+Col04_Row24 : INT ;
+Col04_Row25 : INT ;
+Col04_Row26 : INT ;
+Col04_Row27 : INT ;
+Col04_Row28 : INT ;
+Col04_Row29 : INT ;
+Col04_Row30 : INT ;
+Col04_Row31 : INT ;
+Col04_Row32 : INT ;
+Col05_Row01 : INT ;
+Col05_Row02 : INT ;
+Col05_Row03 : INT ;
+Col05_Row04 : INT ;
+Col05_Row05 : INT ;
+Col05_Row06 : INT ;
+Col05_Row07 : INT ;
+Col05_Row08 : INT ;
+Col05_Row09 : INT ;
+Col05_Row10 : INT ;
+Col05_Row11 : INT ;
+Col05_Row12 : INT ;
+Col05_Row13 : INT ;
+Col05_Row14 : INT ;
+Col05_Row15 : INT ;
+Col05_Row16 : INT ;
+Col05_Row17 : INT ;
+Col05_Row18 : INT ;
+Col05_Row19 : INT ;
+Col05_Row20 : INT ;
+Col05_Row21 : INT ;
+Col05_Row22 : INT ;
+Col05_Row23 : INT ;
+Col05_Row24 : INT ;
+Col05_Row25 : INT ;
+Col05_Row26 : INT ;
+Col05_Row27 : INT ;
+Col05_Row28 : INT ;
+Col05_Row29 : INT ;
+Col05_Row30 : INT ;
+Col05_Row31 : INT ;
+Col05_Row32 : INT ;
+Col06_Row01 : DINT ;
+Col06_Row02 : DINT ;
+Col06_Row03 : DINT ;
+Col06_Row04 : DINT ;
+Col06_Row05 : DINT ;
+Col06_Row06 : DINT ;
+Col06_Row07 : DINT ;
+Col06_Row08 : DINT ;
+Col06_Row09 : DINT ;
+Col06_Row10 : DINT ;
+Col06_Row11 : DINT ;
+Col06_Row12 : DINT ;
+Col06_Row13 : DINT ;
+Col06_Row14 : DINT ;
+Col06_Row15 : DINT ;
+Col06_Row16 : DINT ;
+Col06_Row17 : DINT ;
+Col06_Row18 : DINT ;
+Col06_Row19 : DINT ;
+Col06_Row20 : DINT ;
+Col06_Row21 : DINT ;
+Col06_Row22 : DINT ;
+Col06_Row23 : DINT ;
+Col06_Row24 : DINT ;
+Col06_Row25 : DINT ;
+Col06_Row26 : DINT ;
+Col06_Row27 : DINT ;
+Col06_Row28 : DINT ;
+Col06_Row29 : DINT ;
+Col06_Row30 : DINT ;
+Col06_Row31 : DINT ;
+Col06_Row32 : DINT ;
+Col07_Row01 : DINT ;
+Col07_Row02 : DINT ;
+Col07_Row03 : DINT ;
+Col07_Row04 : DINT ;
+Col07_Row05 : DINT ;
+Col07_Row06 : DINT ;
+Col07_Row07 : DINT ;
+Col07_Row08 : DINT ;
+Col07_Row09 : DINT ;
+Col07_Row10 : DINT ;
+Col07_Row11 : DINT ;
+Col07_Row12 : DINT ;
+Col07_Row13 : DINT ;
+Col07_Row14 : DINT ;
+Col07_Row15 : DINT ;
+Col07_Row16 : DINT ;
+Col07_Row17 : DINT ;
+Col07_Row18 : DINT ;
+Col07_Row19 : DINT ;
+Col07_Row20 : DINT ;
+Col07_Row21 : DINT ;
+Col07_Row22 : DINT ;
+Col07_Row23 : DINT ;
+Col07_Row24 : DINT ;
+Col07_Row25 : DINT ;
+Col07_Row26 : DINT ;
+Col07_Row27 : DINT ;
+Col07_Row28 : DINT ;
+Col07_Row29 : DINT ;
+Col07_Row30 : DINT ;
+Col07_Row31 : DINT ;
+Col07_Row32 : DINT ;
+Col08_Row01 : DINT ;
+Col08_Row02 : DINT ;
+Col08_Row03 : DINT ;
+Col08_Row04 : DINT ;
+Col08_Row05 : DINT ;
+Col08_Row06 : DINT ;
+Col08_Row07 : DINT ;
+Col08_Row08 : DINT ;
+Col08_Row09 : DINT ;
+Col08_Row10 : DINT ;
+Col08_Row11 : DINT ;
+Col08_Row12 : DINT ;
+Col08_Row13 : DINT ;
+Col08_Row14 : DINT ;
+Col08_Row15 : DINT ;
+Col08_Row16 : DINT ;
+Col08_Row17 : DINT ;
+Col08_Row18 : DINT ;
+Col08_Row19 : DINT ;
+Col08_Row20 : DINT ;
+Col08_Row21 : DINT ;
+Col08_Row22 : DINT ;
+Col08_Row23 : DINT ;
+Col08_Row24 : DINT ;
+Col08_Row25 : DINT ;
+Col08_Row26 : DINT ;
+Col08_Row27 : DINT ;
+Col08_Row28 : DINT ;
+Col08_Row29 : DINT ;
+Col08_Row30 : DINT ;
+Col08_Row31 : DINT ;
+Col08_Row32 : DINT ;
+Col09_Row01 : DINT ;
+Col09_Row02 : DINT ;
+Col09_Row03 : DINT ;
+Col09_Row04 : DINT ;
+Col09_Row05 : DINT ;
+Col09_Row06 : DINT ;
+Col09_Row07 : DINT ;
+Col09_Row08 : DINT ;
+Col09_Row09 : DINT ;
+Col09_Row10 : DINT ;
+Col09_Row11 : DINT ;
+Col09_Row12 : DINT ;
+Col09_Row13 : DINT ;
+Col09_Row14 : DINT ;
+Col09_Row15 : DINT ;
+Col09_Row16 : DINT ;
+Col09_Row17 : DINT ;
+Col09_Row18 : DINT ;
+Col09_Row19 : DINT ;
+Col09_Row20 : DINT ;
+Col09_Row21 : DINT ;
+Col09_Row22 : DINT ;
+Col09_Row23 : DINT ;
+Col09_Row24 : DINT ;
+Col09_Row25 : DINT ;
+Col09_Row26 : DINT ;
+Col09_Row27 : DINT ;
+Col09_Row28 : DINT ;
+Col09_Row29 : DINT ;
+Col09_Row30 : DINT ;
+Col09_Row31 : DINT ;
+Col09_Row32 : DINT ;
+Indirect_Col01 : REAL ;
+Indirect_Col02 : REAL ;
+Indirect_Col03 : INT ;
+Indirect_Col04 : INT ;
+Indirect_Col05 : INT ;
+Indirect_Col06 : DINT ;
+Indirect_Col07 : DINT ;
+Indirect_Col08 : DINT ;
+Indirect_Col09 : DINT ;
+
+END_VAR
+
+VAR
+
+END_VAR
+(* @END_DECLARATION := '0' *)
+
+END_PROGRAM
+
+PROGRAM C3Plus
+VAR_INPUT
+Cyclecounter_Counter125us : DINT ;
+PLC_DemandCycleTime : INT ;
+PLC_ActualCycleTimeMax : INT ;
+powerPLmC_BootUp : WORD ;
+powerPLmC_PB_Address : WORD ;
+Diagnostics_DeviceState : INT ;
+Controller_ControlwordDemand : WORD ;
+Controller_Controlword : WORD ;
+DigitalOutputSource_O0_p : DWORD ;
+DigitalOutputSource_O1_p : DWORD ;
+DigitalOutputSource_O2_p : DWORD ;
+DigitalOutputSource_O3_p : DWORD ;
+DigitalOutputMask_O0 : WORD ;
+DigitalOutputMask_O1 : WORD ;
+DigitalOutputMask_O2 : WORD ;
+DigitalOutputMask_O3 : WORD ;
+RemoteDigInput_I0_15 : WORD ;
+RemoteDigInput_I16_31 : WORD ;
+RemoteDigInput_I32_47 : WORD ;
+RemoteDigInput_I48_63 : WORD ;
+RemoteDigOutput_O0_15 : WORD ;
+RemoteDigOutput_O16_31 : WORD ;
+RemoteDigOutput_O32_47 : WORD ;
+RemoteDigOutput_O48_63 : WORD ;
+RemoteAnalogInput_I0 : INT ;
+RemoteAnalogInput_I1 : INT ;
+RemoteAnalogInput_I2 : INT ;
+RemoteAnalogInput_I3 : INT ;
+RemoteAnalogOutput_O0 : INT ;
+RemoteAnalogOutput_O1 : INT ;
+RemoteAnalogOutput_O2 : INT ;
+RemoteAnalogOutput_O3 : INT ;
+AnalogInput0_FilterCoefficient : INT ;
+AnalogInput1_FilterCoefficient : INT ;
+M2x_InputControl_Enable_Inputs_X20 : WORD ;
+M2x_InputControl_Enable_Inputs_X21 : WORD ;
+M2x_InputControl_Disable_X11_Analog_Inputs : BOOL ;
+M2x_Input0_FilterCoefficient : DINT ;
+M2x_Input1_FilterCoefficient : DINT ;
+M2x_Input2_FilterCoefficient : DINT ;
+M2x_Input3_FilterCoefficient : DINT ;
+M2x_Input4_FilterCoefficient : DINT ;
+M2x_Input5_FilterCoefficient : DINT ;
+NormFactorY4_Position : WORD ;
+ValidParameter_CurrentController : BOOL ;
+ValidParameter_FiltersRSDP : BOOL ;
+ValidParameter_SpeedController : BOOL ;
+ValidParameter_PositionController : BOOL ;
+ValidParameter_FeedForward : BOOL ;
+ValidParameter_Misc : BOOL ;
+ValidParameter_Autocommutation : BOOL ;
+ValidParameter_CamControlledSwitches : BOOL ;
+ProjectData_DSPFirmwareVersion : DINT ;
+ProjectData_numerator_reset_function : INT ;
+DeviceData_NormalizedMaxCurrent : DINT ;
+DeviceData_Multiturnemulation_Window_norm : REAL ;
+SystemConstants_ScaleFactorCurrent : INT ;
+Limit_CurrentFine : INT ;
+Misc_EnableIncrementFractional : BOOL ;
+ErrorActual_Word1 : WORD ;
+ErrorActual_Word2 : WORD ;
+ErrorActual_Word3 : WORD ;
+ErrorActual_Word4 : WORD ;
+ErrorActual_Word5 : WORD ;
+ErrorActual_Word6 : WORD ;
+ErrorActual_Word7 : WORD ;
+ErrorActual_Word8 : WORD ;
+ErrorPermanent_Word1 : WORD ;
+ErrorPermanent_Word2 : WORD ;
+ErrorPermanent_Word3 : WORD ;
+ErrorPermanent_Word4 : WORD ;
+ErrorPermanent_Word5 : WORD ;
+ErrorPermanent_Word6 : WORD ;
+ErrorPermanent_Word7 : WORD ;
+ErrorPermanent_Word8 : WORD ;
+ErrorEvent1_Mask1 : WORD ;
+ErrorEvent1_Mask2 : WORD ;
+ErrorEvent1_Mask3 : WORD ;
+ErrorEvent1_Mask4 : WORD ;
+ErrorEvent1_Mask5 : WORD ;
+ErrorEvent1_Mask6 : WORD ;
+ErrorEvent1_Mask7 : WORD ;
+ErrorEvent1_Mask8 : WORD ;
+ErrorEvent2_Mask1 : WORD ;
+ErrorEvent2_Mask2 : WORD ;
+ErrorEvent2_Mask3 : WORD ;
+ErrorEvent2_Mask4 : WORD ;
+ErrorEvent2_Mask5 : WORD ;
+ErrorEvent2_Mask6 : WORD ;
+ErrorEvent2_Mask7 : WORD ;
+ErrorEvent2_Mask8 : WORD ;
+ErrorGlobal_Status : WORD ;
+ErrorHistoryMakeEntry_New : INT ;
+ErrorReaction_ErrorID : WORD ;
+ErrorReaction_Reaction : INT ;
+EncoderEmulation_PositionSignalSource_p : DWORD ;
+EncoderEmulation_Offset : REAL ;
+EncoderEmulation_SetEmulationZero : BOOL ;
+AnalogOutput2_Source_p : DWORD ;
+AnalogOutput2_Gain : REAL ;
+AnalogOutput2_DemandValue : DINT ;
+AnalogOutput2_ActualValueReal : REAL ;
+StatusPosition_EncoderIncrements5V : DWORD ;
+StatusPosition_EncoderIncrements24V : DWORD ;
+Fbi_RxPD_UpdateRate : INT ;
+Fbi_TxPD_UpdateRate : INT ;
+Fbi_RxPD_UpdateDisable : WORD ;
+Fbi_TxPD_UpdateDisable : WORD ;
+CANopen_Protocol : WORD ;
+CANopen_Baudrate : DINT ;
+CANopen_TxPDO1_Event_Timer : WORD ;
+CANopen_TxPDO2_Event_Timer : WORD ;
+CANopen_TxPDO3_Event_Timer : WORD ;
+CANopen_TxPDO4_Event_Timer : WORD ;
+CANopen_ComCyclePeriod : DINT ;
+CANopen_Request : WORD ;
+CANopen_RemoteNode_ID : WORD ;
+CANopen_Index : WORD ;
+CANopen_Subindex : WORD ;
+CANopen_DataLength : WORD ;
+CANopen_Data0 : WORD ;
+CANopen_Data1 : WORD ;
+CANopen_Data2 : WORD ;
+CANopen_Data3 : WORD ;
+CANopen_Data4 : WORD ;
+CANopen_Data5 : WORD ;
+CANopen_Data6 : WORD ;
+CANopen_Data7 : WORD ;
+CANopen_SyncPulseCounter : DINT ;
+HEDA_State : INT ;
+HEDA_OperationMode : INT ;
+HedaTx_Acyc0 : WORD ;
+HedaTx_Acyc1 : WORD ;
+HedaTx_Acyc2 : WORD ;
+HedaTx_Acyc3 : WORD ;
+HedaTx_Acyc4 : WORD ;
+HedaTx_Acyc5 : WORD ;
+HedaTx_Acyc6 : WORD ;
+HedaTx_Acyc7 : WORD ;
+DeviceState_Statusword_1 : WORD ;
+DeviceState_Statusword_2 : WORD ;
+DeviceState_ActualOperationMode : INT ;
+DeviceState_ActualValue1 : REAL ;
+DeviceState_ActualValue2 : REAL ;
+DeviceState_ActualValue3 : REAL ;
+DeviceState_ActualValue4 : REAL ;
+DeviceState_ActualValue5 : WORD ;
+DeviceState_ActualValue6 : WORD ;
+DeviceState_ActualValue7 : DWORD ;
+DeviceState_ActualValue8 : REAL ;
+DeviceState_ActualValue2_Y2 : REAL ;
+DeviceState_ActualValue9 : DWORD ;
+DeviceState_ActualValue10 : DWORD ;
+DeviceControl_CommandOnRequest : INT ;
+DeviceControl_Controlword_1 : WORD ;
+DeviceControl_Controlword_2 : WORD ;
+DeviceControl_OperationMode : INT ;
+DeviceControl_DemandValue1 : REAL ;
+DeviceControl_DemandValue2 : REAL ;
+DeviceControl_DemandValue3 : REAL ;
+DeviceControl_DemandValue4 : REAL ;
+DeviceControl_DemandValue5 : WORD ;
+DeviceControl_DemandValue6 : WORD ;
+DeviceControl_DemandValue7 : DWORD ;
+DeviceControl_DemandValue8 : REAL ;
+DeviceControl_DemandValue2_Y2 : REAL ;
+DeviceControl_DemandValue9 : DWORD ;
+DeviceControl_DemandValue10 : DWORD ;
+DeviceControl_QuickStopMode : INT ;
+DeviceControl_TorqueOffset : INT ;
+DeviceStatus_CounterCommandInProcess : INT ;
+DeviceStatus_LastNAKCommandCounter : INT ;
+POSITION_position : REAL ;
+POSITION_speed : REAL ;
+POSITION_accel : DINT ;
+POSITION_decel : DINT ;
+POSITION_jerk_accel : DINT ;
+POSITION_jerk_decel : DINT ;
+POSITION_resetpositon_mode : INT ;
+POSITION_direction : INT ;
+POSITION_turnaround : INT ;
+STOP_decel : DINT ;
+STOP_jerk : DINT ;
+FSTOP1_decel : DINT ;
+FSTOP1_jerk : DINT ;
+FSTOP3_decel : DINT ;
+FSTOP3_jerk : DINT ;
+ERROR_decel : DINT ;
+ERROR_jerk : DINT ;
+ERROR_AbsoluteStopTime : DINT ;
+SPEED_accel : DINT ;
+SPEED_speed : REAL ;
+SPEED_mode : INT ;
+JOG_accel : DINT ;
+JOG_jerk : DINT ;
+JOG_speed : REAL ;
+JOG_resetposition_mode : INT ;
+JOG_timeout : INT ;
+HOMING_accel : DINT ;
+HOMING_jerk : DINT ;
+HOMING_speed : REAL ;
+HOMING_mode : INT ;
+HOMING_home_offset : REAL ;
+HOMING_position : REAL ;
+HOMING_edge_sensor_distance : REAL ;
+HOMING_home_offset_source : INT ;
+HOMING_control : WORD ;
+HOMING_LimitCurrent : INT ;
+HOMING_LimitSelect : INT ;
+HOMING_home_offset_I32 : DINT ;
+HOMING_position_I32 : DINT ;
+CURRENT_current : DINT ;
+CURRENT_mode : INT ;
+POSSYNC_position : REAL ;
+POSSYNC_speed : REAL ;
+POSSYNC_accel : DINT ;
+POSSYNC_decel : DINT ;
+POSSYNC_jerk_accel : DINT ;
+POSSYNC_jerk_decel : DINT ;
+POSSYNC_possync_mode : INT ;
+POSSYNC_start_position : REAL ;
+POSSYNC_source : INT ;
+POSSYNC_periodic : INT ;
+POSSYNC_master_scale : REAL ;
+CAMIN_coupling_position : REAL ;
+CAMIN_synchronous_position : REAL ;
+CAMIN_mode : INT ;
+CAMIN_delta_masterposition : REAL ;
+CAMIN_coupling_position_actual : REAL ;
+CAMIN_synchronous_position_actual : REAL ;
+CAMOUT_decoupling_position : REAL ;
+CAMOUT_braking_position : REAL ;
+CAMOUT_standstill_position : REAL ;
+CAMOUT_mode : INT ;
+CAMOUT_delta_masterposition : REAL ;
+CAMOUT_decoupling_position_actual : REAL ;
+CAMOUT_braking_position_actual : REAL ;
+GEAR_accel : DINT ;
+GEAR_mode : INT ;
+GEAR_numerator : REAL ;
+GEAR_denominator : INT ;
+GEAR_adjustable_masterposition : REAL ;
+Force_force : DINT ;
+Force_gradient : DINT ;
+Force_mode : INT ;
+Force_Unit_Factor : REAL ;
+Force_force_cyclic : DINT ;
+TorqueForce_DemandValue : DINT ;
+TorqueForce_Gradient : DINT ;
+TorqueForce_MaxSpeed : REAL ;
+TorqueForce_accel : DINT ;
+TorqueForce_decel : DINT ;
+RegMove_ParametersModified : BOOL ;
+PressureFlow_Pressure : REAL ;
+PressureFlow_Gradient : DINT ;
+PressureFlow_Mode : INT ;
+PG2Control_CommandOnRequest : INT ;
+PG2Status_CounterCommandInProcess : INT ;
+PG2Status_LastNAKCommandCounter : INT ;
+PG2POSITION_position : REAL ;
+PG2POSITION_speed : REAL ;
+PG2POSITION_accel : DINT ;
+PG2POSITION_decel : DINT ;
+PG2POSITION_jerk_accel : DINT ;
+PG2POSITION_jerk_decel : DINT ;
+PG2POSITION_resetpositon_mode : INT ;
+PG2POSITION_direction : INT ;
+PG2STOP_decel : DINT ;
+PG2STOP_jerk : DINT ;
+PG2SPEED_accel : DINT ;
+PG2SPEED_speed : REAL ;
+PG2SPEED_mode : INT ;
+PG2JOG_accel : DINT ;
+PG2JOG_jerk : DINT ;
+PG2JOG_speed : REAL ;
+PG2JOG_resetposition_mode : INT ;
+PG2JOG_timeout : INT ;
+PG2HOMING_home_offset : REAL ;
+PG2POSSYNC_position : REAL ;
+PG2POSSYNC_speed : REAL ;
+PG2POSSYNC_accel : DINT ;
+PG2POSSYNC_decel : DINT ;
+PG2POSSYNC_jerk_accel : DINT ;
+PG2POSSYNC_jerk_decel : DINT ;
+PG2POSSYNC_possync_mode : INT ;
+PG2POSSYNC_start_position : REAL ;
+PG2POSSYNC_source : INT ;
+PG2POSSYNC_periodic : INT ;
+PG2POSSYNC_master_scale : REAL ;
+PG2RegMove_ParametersModified : BOOL ;
+PG3Control_CommandOnRequest : INT ;
+PG3Control_destination : INT ;
+PG3Status_CounterCommandInProcess : INT ;
+PG3Status_LastNAKCommandCounter : INT ;
+PG3POSITION_position : REAL ;
+PG3POSITION_speed : REAL ;
+PG3POSITION_accel : DINT ;
+PG3POSITION_decel : DINT ;
+PG3POSITION_jerk_accel : DINT ;
+PG3POSITION_jerk_decel : DINT ;
+PG3POSITION_resetpositon_mode : INT ;
+PG3STOP_decel : DINT ;
+PG3STOP_jerk : DINT ;
+PG3HOMING_home_offset : REAL ;
+PG3POSSYNC_position : REAL ;
+PG3POSSYNC_speed : REAL ;
+PG3POSSYNC_accel : DINT ;
+PG3POSSYNC_decel : DINT ;
+PG3POSSYNC_jerk_accel : DINT ;
+PG3POSSYNC_jerk_decel : DINT ;
+PG3POSSYNC_possync_mode : INT ;
+PG3POSSYNC_start_position : REAL ;
+PG3POSSYNC_source : INT ;
+PG3POSSYNC_periodic : INT ;
+PG3POSSYNC_master_scale : REAL ;
+PlmC_Data1 : REAL ;
+PlmC_Data2 : REAL ;
+PlmC_Data3 : INT ;
+PlmC_Data4 : INT ;
+PlmC_Data5 : INT ;
+PlmC_Data6 : DINT ;
+PlmC_Data7 : DINT ;
+PlmC_Data8 : DINT ;
+PlmC_Data9 : DINT ;
+Conversion_Index : INT ;
+Conversion_Subindex : INT ;
+Conversion_F48_Real32 : REAL ;
+Conversion_F48_Int32 : DINT ;
+Conversion_Scaling_Read : REAL ;
+Conversion_Scaling_Write : REAL ;
+IECObjectPointer_Target : REAL ;
+IECObjectPointer_Entry : REAL ;
+FeedForward_UserCurrent : DINT ;
+FeedForward_GainUserCurrent : REAL ;
+TrackingfilterSecondEncoder_TRFSpeed : INT ;
+TrackingfilterPhysicalSource_TRFSpeed : INT ;
+TrackingfilterPhysicalSource_TRFDamping : INT ;
+TrackingfilterHEDA_TRFSpeed : INT ;
+TrackingfilterHEDA_TRFDamping : INT ;
+TrackingfilterSG1_TRFSpeed : INT ;
+TrackingfilterSG1_TRFDamping : INT ;
+TrackingfilterSG1_FilterSpeed : INT ;
+TrackingfilterSG1_AccelFilter : INT ;
+TrackingfilterSG1_FilterSpeed_us : DINT ;
+TrackingfilterSG1_AccelFilter_us : DINT ;
+NotchFilter_FrequencyFilter1 : INT ;
+NotchFilter_BandwidthFilter1 : INT ;
+NotchFilter_DepthFilter1 : DINT ;
+NotchFilter_FrequencyFilter2 : INT ;
+NotchFilter_BandwidthFilter2 : INT ;
+NotchFilter_DepthFilter2 : DINT ;
+HallCommutationControl_Reset : BOOL ;
+PositionController_TrackingErrorFilter : INT ;
+PositionController_DeadBand : REAL ;
+LoadControl_Enable : BOOL ;
+LoadControl_Command : DINT ;
+LoadControl_FilterLaggingPart : DINT ;
+LoadControl_VelocityFilter : DINT ;
+LoadControl_VelocityLimit : DINT ;
+SpeedController_ScalingDemandValueAdditive : REAL ;
+PressureForceController_Proportional_Part_Kp : REAL ;
+PressureForceController_Integration_Part_KI : REAL ;
+PressureForceController_InsideWindow_IPart : REAL ;
+PressureForceController_OutsideWindow_IPart : REAL ;
+PressureForceController_SpeedFeedback_Kvp_or_DampingFactor : REAL ;
+PressureForceController_PressureForce_Disturbance_KFFWp : REAL ;
+PressureForceController_SpeedFeedback_Limit : INT ;
+PressureForceController_Derivative_Part_Pos : REAL ;
+PressureForceController_Derivative_Part_Neg : REAL ;
+PressureForceController_TimeDelay_DT1_T1 : INT ;
+PressureForceController_UserFeedForward : REAL ;
+PressureForceController_IPart_Limit_Pos : REAL ;
+PressureForceController_IPart_Limit_Neg : REAL ;
+Q_CurrentController_Scaling_Q_DemandValueAdditive : INT ;
+Q_CurrentController_ExternalCommutationSwitch : BOOL ;
+Q_CurrentController_CommutationExternalValue : REAL ;
+TouchProbe_Control : BOOL ;
+TouchProbe_Source_p : DWORD ;
+TouchProbe_Trigger : INT ;
+TouchProbe_Enable : INT ;
+TouchProbe_Status : WORD ;
+TouchProbe_IgnoreZone_Start : REAL ;
+TouchProbe_IgnoreZone_End : REAL ;
+TouchProbe_FallingEdge : BOOL ;
+Technology_Functions_Mode : INT ;
+Technology_Functions_Mode2 : INT ;
+FineInterpolation_500_125_Source_p : DWORD ;
+FineInterpolation_500_125_Target_p : DWORD ;
+FineInterpolation_500_125_Scalefactor : REAL ;
+HEDA_SignalProcessing_Input : REAL ;
+FBI_SignalProcessing0_ResetDistance : DINT ;
+FBI_SignalProcessing0_Source : INT ;
+FBI_SignalProcessing0_ResetDistance_Incr : DINT ;
+FBI_SignalProcessing0_IncrModuloEnable : INT ;
+FBI_Interpolation_SubModeSelect : INT ;
+TechnologyTrackingFilter_Source_p : DWORD ;
+TechnologyTrackingFilter_Enable : BOOL ;
+TechnologyTrackingFilter_Speed : INT ;
+TechnologyTrackingFilter_Damping : DINT ;
+TechnologyTrackingFilter_ModuloSystem : INT ;
+TechnologyTrackingFilter_SetModuloPosition : REAL ;
+
+END_VAR
+
+VAR
+Cyclecounter_Systemcounter : DINT ;
+PLC_ActualCycleTime : INT ;
+Diagnostics_DCbus_Voltage : INT ;
+Diagnostics_DCbus_Current : INT ;
+Diagnostics_TemperatureHeatSink : INT ;
+Diagnostics_RectifierLoad : INT ;
+Diagnostics_ChopperLoad : INT ;
+Switch_DeviceFunction : WORD ;
+SSI_Feedback_Absolut_Position : REAL ;
+SSI_Feedback_PositionGreat : REAL ;
+Limit_MaxTorque : INT ;
+ErrorHistory_LastError : INT ;
+EncoderEmulation_Setpoint_without_offset : REAL ;
+AnalogOutput2_ActualValue : REAL ;
+StatusTorqueForce_SetpointTorque : DINT ;
+StatusTorqueForce_ActualTorque : DINT ;
+StatusTorqueForce_SetpointForce : DINT ;
+StatusTorqueForce_ActualForce : DINT ;
+StatusTorqueForce_RatedTorqueForce : DINT ;
+StatusPressureForce_ForceDemandValue : DINT ;
+StatusPressureForce_ForceActualValue : DINT ;
+StatusPressureForce_ForceError : DINT ;
+StatusPressureForce_ForceDemandValueGradient : DINT ;
+StatusPressureForce_ControllerIpart : REAL ;
+StatusPressureForce_ControllerPpart : REAL ;
+StatusPressureForce_ControllerDpart : REAL ;
+StatusPressureForce_ControllerVpart : REAL ;
+StatusPressureForce_ControllerFFWpart : REAL ;
+StatusPressureForce_ControllerUserpart : REAL ;
+StatusPressureForce_ControllerOutnolimit : REAL ;
+StatusPressureForce_ControllerOut : REAL ;
+StatusPosition_SSI_AbsolutPosition_LoadUnits : REAL ;
+StatusPosition_SSI_AbsolutPosition_MasterUnits : REAL ;
+StatusPosition_SuperImposedPositionSum : REAL ;
+StatusDevice_MotorCurrent : DINT ;
+StatusDevice_X4_ENAIn_State_C3S : BOOL ;
+StatusDevice_C3H_PreCharge : BOOL ;
+StatusTemperature_TmotResistance : DINT ;
+StatusCurrent_FieldWeakeningFactor : REAL ;
+StatusHallcommutation_EdgeCounter : INT ;
+StatusHallcommutation_Offset : DINT ;
+SafetyMonitor_OperatingState : WORD ;
+SafetyMonitor_AlarmCode : WORD ;
+SafetyMonitor_ErrorCode : WORD ;
+SafetyMonitor_DiagnosticsBits0_15 : WORD ;
+SafetyMonitor_DiagnosticsBits16_31 : WORD ;
+SafetyMonitor_DiagnosticsBits32_47 : WORD ;
+SafetyMonitor_DiagnosticsBits48_55 : WORD ;
+SafetyMonitor_ProcessData_U16_1 : WORD ;
+SafetyMonitor_ProcessData_U16_2 : WORD ;
+SafetyMonitor_ProcessData_U16_3 : WORD ;
+SafetyMonitor_ProcessData_U16_4 : WORD ;
+SafetyMonitor_ProcessData_U32_1 : WORD ;
+SafetyMonitor_ProcessData_U32_2 : WORD ;
+SafetyMonitor_ProcessData_U32_3 : WORD ;
+CANopen_Node_ID : WORD ;
+CANopen_State : WORD ;
+CANopen_SyncPeriod : REAL ;
+HedaRx_Acyc0 : WORD ;
+HedaRx_Acyc1 : WORD ;
+HedaRx_Acyc2 : WORD ;
+HedaRx_Acyc3 : WORD ;
+HedaRx_Acyc4 : WORD ;
+HedaRx_Acyc5 : WORD ;
+HedaRx_Acyc6 : WORD ;
+HedaRx_Acyc7 : WORD ;
+DeviceState_DeviceState : INT ;
+DeviceState_DeviceStateLevel : INT ;
+DeviceState_DigitalInputs : DWORD ;
+PG2State_PG2State : INT ;
+PG2State_PG2StateLevel : INT ;
+PG3State_PG3State : INT ;
+PG3State_PG3StateLevel : INT ;
+DeviceStatus_CommandInProcess : INT ;
+DeviceStatus_LastCommandInProcess : INT ;
+DeviceStatus_LastNAKCommand : INT ;
+DeviceStatus_Statepointer : INT ;
+POSITION_remaining_time : TIME ;
+PRESSURE_output : INT ;
+PG2Status_CommandInProcess : INT ;
+PG2Status_LastCommandInProcess : INT ;
+PG2Status_LastNAKCommand : INT ;
+PG3Status_CommandInProcess : INT ;
+PG3Status_LastCommandInProcess : INT ;
+PG3Status_LastNAKCommand : INT ;
+ProfilGenerators_SG1Position : REAL ;
+ProfilGenerators_PG2Position : REAL ;
+ProfilGenerators_PG3Position : REAL ;
+ProfilGenerators_SG1PositionSum : REAL ;
+ExternalSignal_Speed_Munits : REAL ;
+ExternalSignal_Accel_Munits : DINT ;
+SecondEncoderSignal_Position : REAL ;
+SecondEncoderSignal_Speed : REAL ;
+HallCommutationControl_EdgePositionDelta : INT ;
+HallCommutationControl_OffsetInvers : DINT ;
+HallCommutationControl_Init : INT ;
+PositionController_DemandValue : REAL ;
+PositionController_ActualValue : REAL ;
+SpeedController_ActuatingSignal : DINT ;
+PressureForceController_PressureDemandValueGradient : REAL ;
+Q_CurrentController_CommutationAngle : DINT ;
+TouchProbe_Val_Real : REAL ;
+TouchProbe_Val_Int : INT ;
+TouchProbe_Val_DInt : DINT ;
+HEDA_SignalProcessing_Speed : DINT ;
+HEDA_SignalProcessing_Output : REAL ;
+HEDA_SignalProcessing_OutputGreat : REAL ;
+FBI_SignalProcessing0_Speed : REAL ;
+FBI_SignalProcessing0_Output : REAL ;
+FBI_SignalProcessing0_OutputGreat : REAL ;
+TechnologyTrackingFilter_InputValue : REAL ;
+TechnologyTrackingFilter_OutputValue : REAL ;
+TechnologyTrackingFilter_OutputValueModulo : REAL ;
+TechnologyTrackingFilter_OutputValueModuloUnits : REAL ;
+TechnologyTrackingFilter_OutputValueFirstDerivative : REAL ;
+TechnologyTrackingFilter_OutputValueSecondDerivative : REAL ;
+TechnologyTrackingFilter_OutputValue_DINT : DINT ;
+
+END_VAR
+(* @END_DECLARATION := '0' *)
+
+END_PROGRAM
+
+FUNCTION_BLOCK C3_Input
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+	I0,I1,I2,I3,I4,I5,I6,I7:BOOL;
+END_VAR
+VAR
+END_VAR
+(* @END_DECLARATION := '0' *)
+LD		C3.DigitalInput_Value
+AND		1
+NE		0
+ST		I0
+
+LD		C3.DigitalInput_Value
+AND		2
+NE		0
+ST		I1
+
+LD		C3.DigitalInput_Value
+AND		4
+NE		0
+ST		I2
+
+LD		C3.DigitalInput_Value
+AND		8
+NE		0
+ST		I3
+
+LD		C3.DigitalInput_Value
+AND		16
+NE		0
+ST		I4
+
+LD		C3.DigitalInput_Value
+AND		32
+NE		0
+ST		I5
+
+LD		C3.DigitalInput_Value
+AND		64
+NE		0
+ST		I6
+
+LD		C3.DigitalInput_Value
+AND		128
+NE		0
+ST		I7
+
+
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK C3_IOAddition_0
+VAR_INPUT
+	OutputEnable:	BOOL:=FALSE;
+	O0 : BOOL;
+	O1 : BOOL;
+	O2 : BOOL;
+	O3 : BOOL;
+END_VAR
+VAR_OUTPUT
+	I0,I1,I2,I3	: BOOL;
+	Error	: BOOL;
+END_VAR
+VAR
+END_VAR
+(* @END_DECLARATION := '0' *)
+LD		OutputEnable
+
+JMPC		ENABLED
+
+LD		C3.DigitalOutputAddition_Enable
+AND		65534
+ST		C3.DigitalOutputAddition_Enable
+
+JMP		_IO1
+
+enabled:
+LD		C3.DigitalOutputAddition_Enable
+OR		1
+ST		C3.DigitalOutputAddition_Enable
+
+LD		C3.DigitalOutputAddition_Value
+AND		4080
+OR(		O0
+BOOL_TO_WORD		
+)
+OR(		O1
+BOOL_TO_WORD		
+SHL		1
+AND		2
+)
+OR(		O2
+BOOL_TO_WORD		
+SHL		2
+AND		4
+)
+OR(		O3
+BOOL_TO_WORD		
+SHL		3
+AND		8
+)
+ST		C3.DigitalOutputAddition_Value
+
+_io1:
+LD		C3.DigitalInputAddition_Value
+AND		1
+NE		0
+ST		I0
+
+LD		C3.DigitalInputAddition_Value
+AND		2
+NE		0
+ST		I1
+
+LD		C3.DigitalInputAddition_Value
+AND		4
+NE		0
+ST		I2
+
+LD		C3.DigitalInputAddition_Value
+AND		8
+NE		0
+ST		I3
+
+LD		C3.DigitalOutputAddition_Error
+AND		1
+NE		0
+ST		Error
+
+
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK C3_Output
+VAR_INPUT
+	O0,O1,O2,O3:BOOL;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+END_VAR
+(* @END_DECLARATION := '0' *)
+LD		O0
+ST		C3.DigitalOutput_Auxiliary0
+
+LD		O1
+ST		C3.DigitalOutput_Auxiliary1
+
+LD		O2
+ST		C3.DigitalOutput_Auxiliary2
+
+LD		O3
+ST		C3.DigitalOutput_Auxiliary3
+
+
+END_FUNCTION_BLOCK
+
+PROGRAM PLC_PRG
+
+VAR CONSTANT
+	CPXenable1: INT := 1;
+	CPXenable2: INT := 2;
+	CPXstop: INT := 9;
+	CPXreset: INT := 10;
+	CPXhome: INT := 11;
+	CPXposabs: INT := 12;
+	CPXposrel: INT := 13;
+	CPXdisable: INT := 14;
+	CPXoutput: INT := 15;
+
+	CPXIO0: INT := 0;
+	CPXIO1: INT := 1;
+	CPXIO2: INT := 2;
+	CPXIO3: INT := 3;
+
+	CMD_None: INT := 0;
+	CMD_Reset: INT := 1;
+	CMD_Stop: INT := 2;
+	CMD_Home: INT := 3;
+	CMD_MoveAbsolute: INT := 4;
+	CMD_MoveRelative: INT := 5;
+	CMD_Done: INT := 100;
+END_VAR
+
+VAR
+	MCPower: MC_Power;
+	MCStop: MC_Stop;
+	MCReset: MC_Reset;
+	MCHome: MC_Home;
+	MCMoveAbsolute: MC_MoveAbsolute;
+	MCMoveRelative: MC_MoveRelative;
+	Inputs: C3_Input;
+	Outputs: C3_Output;
+	AosOutputs: C3_IOAddition_0;
+	cmd: INT;
+	cmdlast: INT := 0;
+	runcmd: INT := 0;
+	startcmd: INT;
+	halfwindow: REAL;
+	diff: REAL;
+	enable: BOOL := 0;
+
+	IO_point_address: INT := 0;
+	IO_point_value: INT := 0;
+	IO_point_state: BOOL := FALSE;
+
+	SIM_INPUT_4: BOOL := FALSE;
+END_VAR
+
+(* @END_DECLARATION := '0' *)
+CAL		Inputs
+
+LD		0
+ST		startcmd
+
+LD		C3ARRAY.Col05_Row01
+ST		cmd
+
+LD		C3ARRAY.Col05_Row06
+ST		IO_point_address
+
+LD		C3ARRAY.Col05_Row07
+ST		IO_point_value
+
+LD		Outputs.O0
+ST		C3PLUS.DeviceState_Statusword_2.0
+
+LD		Outputs.O1
+ST		C3PLUS.DeviceState_Statusword_2.1
+
+LD		Outputs.O2
+ST		C3PLUS.DeviceState_Statusword_2.2
+
+LD		Outputs.O3
+ST		C3PLUS.DeviceState_Statusword_2.3
+
+LD		Inputs.I0
+ST		C3PLUS.DeviceState_Statusword_2.4
+
+LD		Inputs.I1
+ST		C3PLUS.DeviceState_Statusword_2.5
+
+LD		Inputs.I2
+ST		C3PLUS.DeviceState_Statusword_2.6
+
+LD		Inputs.I3
+ST		C3PLUS.DeviceState_Statusword_2.7
+
+LD		Inputs.I4
+ST		C3PLUS.DeviceState_Statusword_2.8
+
+LD		Inputs.I5
+ST		C3PLUS.DeviceState_Statusword_2.9
+
+LD		Inputs.I6
+ST		C3PLUS.DeviceState_Statusword_2.10
+
+LD		Inputs.I7
+ST		C3PLUS.DeviceState_Statusword_2.11
+
+LD		C3ARRAY.Col05_Row05
+EQ		1
+NOT
+
+JMPC		else1_0
+
+LD		TRUE
+ST		SIM_INPUT_4
+
+JMP		end1_0
+
+else1_0:
+LD		FALSE
+ST		SIM_INPUT_4
+
+end1_0:
+LD		cmdlast
+EQ		CPXenable1
+AND(		cmd
+EQ		CPXenable2
+)
+NOT
+
+JMPC		else2_0
+
+LD		TRUE
+ST		enable
+
+else2_0:
+end2_0:
+LD		cmd
+ST		cmdlast
+
+LD		Inputs.I2
+EQ		TRUE
+AND(		Inputs.I3
+EQ		TRUE
+)
+NOT
+
+JMPC		else3_0
+
+LD		enable
+EQ		TRUE
+NOT
+
+JMPC		else4_0
+
+LD		TRUE
+ST		MCPower.Enable
+
+LD		0
+ST		C3ARRAY.Col05_Row01
+
+LD		FALSE
+ST		enable
+
+else4_0:
+end4_0:
+JMP		end3_0
+
+else3_0:
+LD		FALSE
+ST		MCPower.Enable
+
+end3_0:
+LD		cmd
+EQ		CPXreset
+NOT
+
+JMPC		else5_0
+
+LD		runcmd
+NE		CMD_Reset
+AND(		runcmd
+NE		CMD_Done
+)
+
+JMPC		case6_0
+
+JMP		endcase6_0
+
+case6_0:
+LD		CMD_Reset
+ST		startcmd
+
+LD		TRUE
+ST		MCReset.Execute
+
+endcase6_0:
+else5_0:
+end5_0:
+LD		cmd
+EQ		CPXdisable
+NOT
+
+JMPC		else7_0
+
+LD		FALSE
+ST		MCStop.Execute
+
+LD		FALSE
+ST		MCHome.Execute
+
+LD		FALSE
+ST		MCMoveAbsolute.Execute
+
+LD		FALSE
+ST		MCMoveRelative.Execute
+
+LD		FALSE
+ST		MCPower.Enable
+
+LD		CMD_Done
+ST		startcmd
+
+else7_0:
+end7_0:
+LD		cmd
+EQ		CPXoutput
+NOT
+
+JMPC		else8_0
+
+LD		IO_point_value
+EQ		0
+OR(		IO_point_value
+EQ		1
+)
+NOT
+
+JMPC		else9_0
+
+LD		IO_point_address
+NE		0
+
+JMPC		case10_0
+
+LD		IO_point_value
+INT_TO_BOOL		
+ST		Outputs.O0
+
+JMP		endcase10_0
+
+case10_0:
+LD		IO_point_address
+NE		1
+
+JMPC		case10_1
+
+LD		IO_point_value
+INT_TO_BOOL		
+ST		Outputs.O1
+
+JMP		endcase10_0
+
+case10_1:
+LD		IO_point_address
+NE		2
+
+JMPC		case10_2
+
+LD		IO_point_value
+INT_TO_BOOL		
+ST		Outputs.O2
+
+JMP		endcase10_0
+
+case10_2:
+LD		IO_point_address
+NE		3
+
+JMPC		case10_3
+
+LD		IO_point_value
+INT_TO_BOOL		
+ST		Outputs.O3
+
+JMP		endcase10_0
+
+case10_3:
+endcase10_0:
+else9_0:
+end9_0:
+LD		0
+ST		C3ARRAY.Col05_Row06
+
+LD		0
+ST		C3ARRAY.Col05_Row07
+
+LD		0
+ST		C3ARRAY.Col05_Row01
+
+else8_0:
+end8_0:
+LD		Inputs.I4
+EQ		TRUE
+OR(		SIM_INPUT_4
+EQ		TRUE
+)
+NOT
+
+JMPC		else11_0
+
+LD		1
+ST		C3ARRAY.Col04_Row01
+
+LD		runcmd
+EQ		CMD_None
+OR(		cmd
+EQ		CPXstop
+)
+NOT
+
+JMPC		else12_0
+
+LD		cmd
+NE		CPXhome
+
+JMPC		case13_0
+
+LD		CMD_Home
+ST		startcmd
+
+LD		C3ARRAY.Col01_Row01
+ST		MCHome.Position
+
+LD		TRUE
+ST		MCHome.Execute
+
+JMP		endcase13_0
+
+case13_0:
+LD		cmd
+NE		CPXposabs
+
+JMPC		case13_1
+
+LD		CMD_MoveAbsolute
+ST		startcmd
+
+LD		C3ARRAY.Col01_Row01
+ST		MCMoveAbsolute.Position
+
+LD		C3ARRAY.Col02_Row01
+ST		MCMoveAbsolute.Velocity
+
+LD		C3ARRAY.Col06_Row01
+ST		MCMoveAbsolute.Acceleration
+
+LD		C3ARRAY.Col07_Row01
+ST		MCMoveAbsolute.Deceleration
+
+LD		C3ARRAY.Col08_Row01
+ST		MCMoveAbsolute.Jerk
+
+LD		C3ARRAY.Col09_Row01
+ST		MCMoveAbsolute.JerkDecel
+
+LD		TRUE
+ST		MCMoveAbsolute.Execute
+
+JMP		endcase13_0
+
+case13_1:
+LD		cmd
+NE		CPXposrel
+
+JMPC		case13_2
+
+LD		CMD_MoveRelative
+ST		startcmd
+
+LD		C3ARRAY.Col01_Row01
+ST		MCMoveRelative.Distance
+
+LD		C3ARRAY.Col02_Row01
+ST		MCMoveRelative.Velocity
+
+LD		C3ARRAY.Col06_Row01
+ST		MCMoveRelative.Acceleration
+
+LD		C3ARRAY.Col07_Row01
+ST		MCMoveRelative.Deceleration
+
+LD		C3ARRAY.Col08_Row01
+ST		MCMoveRelative.Jerk
+
+LD		C3ARRAY.Col09_Row01
+ST		MCMoveRelative.JerkDecel
+
+LD		TRUE
+ST		MCMoveRelative.Execute
+
+JMP		endcase13_0
+
+case13_2:
+LD		cmd
+NE		CPXstop
+
+JMPC		case13_3
+
+LD		CMD_Stop
+ST		startcmd
+
+LD		C3ARRAY.Col07_Row01
+ST		MCStop.Deceleration
+
+LD		C3ARRAY.Col09_Row01
+ST		MCStop.Jerk
+
+LD		TRUE
+ST		MCStop.Execute
+
+LD		FALSE
+ST		MCHome.Execute
+
+LD		FALSE
+ST		MCMoveAbsolute.Execute
+
+LD		FALSE
+ST		MCMoveRelative.Execute
+
+LD		0
+ST		C3ARRAY.Col05_Row01
+
+JMP		endcase13_0
+
+case13_3:
+LD		0
+ST		C3ARRAY.Col05_Row01
+
+endcase13_0:
+else12_0:
+end12_0:
+JMP		end11_0
+
+else11_0:
+LD		0
+ST		C3ARRAY.Col04_Row01
+
+LD		MCPower.Status
+NOT
+
+JMPC		else14_0
+
+LD		runcmd
+NE		CMD_Stop
+AND(		runcmd
+NE		CMD_Reset
+AND(		runcmd
+NE		CMD_Done
+AND(		runcmd
+NE		CMD_None
+)
+)
+)
+
+JMPC		case15_0
+
+JMP		endcase15_0
+
+case15_0:
+LD		CMD_Stop
+ST		startcmd
+
+LD		C3ARRAY.Col07_Row01
+ST		MCStop.Deceleration
+
+LD		C3ARRAY.Col09_Row01
+ST		MCStop.Jerk
+
+LD		TRUE
+ST		MCStop.Execute
+
+LD		FALSE
+ST		MCHome.Execute
+
+LD		FALSE
+ST		MCMoveAbsolute.Execute
+
+LD		FALSE
+ST		MCMoveRelative.Execute
+
+endcase15_0:
+else14_0:
+end14_0:
+end11_0:
+LD		startcmd
+NE		0
+NOT
+
+JMPC		else16_0
+
+LD		startcmd
+ST		runcmd
+
+JMP		end16_0
+
+else16_0:
+LD		runcmd
+NE		CMD_Reset
+
+JMPC		case17_0
+
+LD		MCReset.Done
+OR		MCReset.Error
+NOT
+
+JMPC		else18_0
+
+LD		FALSE
+ST		MCReset.Execute
+
+LD		CMD_Done
+ST		runcmd
+
+else18_0:
+end18_0:
+JMP		endcase17_0
+
+case17_0:
+LD		runcmd
+NE		CMD_Stop
+
+JMPC		case17_1
+
+LD		MCPower.Status
+NOT
+OR		MCStop.Done
+OR		MCStop.Error
+NOT
+
+JMPC		else19_0
+
+LD		MCStop.Done
+NOT
+
+JMPC		else20_0
+
+LD		C3.StatusPosition_DemandValue
+ST		C3ARRAY.Col01_Row02
+
+LD		0
+ST		C3ARRAY.Col05_Row01
+
+else20_0:
+end20_0:
+LD		FALSE
+ST		MCStop.Execute
+
+LD		CMD_Done
+ST		runcmd
+
+else19_0:
+end19_0:
+JMP		endcase17_0
+
+case17_1:
+LD		runcmd
+NE		CMD_Home
+
+JMPC		case17_2
+
+LD		MCHome.Done
+OR		MCHome.CommandAborted
+OR		MCHome.Error
+NOT
+
+JMPC		else21_0
+
+LD		MCHome.Done
+NOT
+
+JMPC		else22_0
+
+LD		C3.StatusPosition_DemandValue
+ST		C3ARRAY.Col01_Row02
+
+else22_0:
+end22_0:
+LD		MCHome.CommandAborted
+NOT
+
+JMPC		else23_0
+
+LD		1
+ST		C3ARRAY.Col03_Row01
+
+else23_0:
+end23_0:
+LD		FALSE
+ST		MCHome.Execute
+
+LD		CMD_Done
+ST		runcmd
+
+else21_0:
+end21_0:
+JMP		endcase17_0
+
+case17_2:
+LD		runcmd
+NE		CMD_MoveAbsolute
+
+JMPC		case17_3
+
+LD		MCMoveAbsolute.Done
+OR		MCMoveAbsolute.CommandAborted
+OR		MCMoveAbsolute.Error
+NOT
+
+JMPC		else24_0
+
+LD		MCMoveAbsolute.Done
+NOT
+
+JMPC		else25_0
+
+LD		C3.StatusPosition_DemandValue
+ST		C3ARRAY.Col01_Row02
+
+else25_0:
+end25_0:
+LD		MCMoveAbsolute.CommandAborted
+NOT
+
+JMPC		else26_0
+
+LD		1
+ST		C3ARRAY.Col03_Row01
+
+else26_0:
+end26_0:
+LD		FALSE
+ST		MCMoveAbsolute.Execute
+
+LD		CMD_Done
+ST		runcmd
+
+else24_0:
+end24_0:
+JMP		endcase17_0
+
+case17_3:
+LD		runcmd
+NE		CMD_MoveRelative
+
+JMPC		case17_4
+
+LD		MCMoveRelative.Done
+OR		MCMoveRelative.CommandAborted
+OR		MCMoveRelative.Error
+NOT
+
+JMPC		else27_0
+
+LD		MCMoveRelative.Done
+NOT
+
+JMPC		else28_0
+
+LD		C3.StatusPosition_DemandValue
+ST		C3ARRAY.Col01_Row02
+
+else28_0:
+end28_0:
+LD		MCMoveRelative.CommandAborted
+NOT
+
+JMPC		else29_0
+
+LD		1
+ST		C3ARRAY.Col03_Row01
+
+else29_0:
+end29_0:
+LD		FALSE
+ST		MCMoveRelative.Execute
+
+LD		CMD_Done
+ST		runcmd
+
+else27_0:
+end27_0:
+JMP		endcase17_0
+
+case17_4:
+LD		runcmd
+NE		CMD_Done
+
+JMPC		case17_5
+
+LD		0
+ST		C3ARRAY.Col05_Row01
+
+LD		0
+ST		C3ARRAY.Col05_Row05
+
+LD		CMD_None
+ST		runcmd
+
+JMP		endcase17_0
+
+case17_5:
+endcase17_0:
+end16_0:
+LD		C3PLUS.ErrorHistory_LastError
+GT		1
+OR(		C3ARRAY.Col03_Row01
+GT		0
+)
+NOT
+
+JMPC		else30_0
+
+LD		TRUE
+ST		Outputs.O3
+
+JMP		end30_0
+
+else30_0:
+LD		FALSE
+ST		Outputs.O3
+
+end30_0:
+LD		1
+PULSE		C3ARRAY.Col01_Row11,C3ARRAY.Col02_Row11,C3ARRAY.Col03_Row11,C3ARRAY.Col04_Row11
+ST		AosOutputs.O0
+
+LD		2
+PULSE		C3ARRAY.Col01_Row12,C3ARRAY.Col02_Row12,C3ARRAY.Col03_Row12,C3ARRAY.Col04_Row12
+ST		AosOutputs.O1
+
+LD		3
+PULSE		C3ARRAY.Col01_Row13,C3ARRAY.Col02_Row13,C3ARRAY.Col03_Row13,C3ARRAY.Col04_Row13
+ST		AosOutputs.O2
+
+LD		4
+PULSE		C3ARRAY.Col01_Row14,C3ARRAY.Col02_Row14,C3ARRAY.Col03_Row14,C3ARRAY.Col04_Row14
+ST		AosOutputs.O3
+
+CAL		Outputs
+
+CAL		AosOutputs(OutputEnable := TRUE)
+
+CAL		MCPower(Axis := AXIS_REF_LocalAxis)
+
+CAL		MCReset(Axis := AXIS_REF_LocalAxis)
+
+CAL		MCStop(Axis := AXIS_REF_LocalAxis)
+
+CAL		MCHome(Axis := AXIS_REF_LocalAxis)
+
+CAL		MCMoveAbsolute(Axis := AXIS_REF_LocalAxis)
+
+CAL		MCMoveRelative(Axis := AXIS_REF_LocalAxis)
+
+
+END_PROGRAM
+
+FUNCTION pulse : BOOL
+VAR_INPUT
+	nr: INT;
+	pos: REAL;
+	pitch: REAL;
+	window: INT;
+	mode: INT;
+END_VAR
+VAR
+	new: BOOL;
+	diff: REAL;
+	halfwindow: REAL;
+END_VAR
+(* @END_DECLARATION := '0' *)
+LD		window
+NE		0
+NOT
+
+JMPC		else1_0
+
+LD		C3.StatusPosition_DemandValue
+SUB		pos
+ST		diff
+
+LD		window
+ST		halfwindow
+
+LD		halfwindow
+DIV		200.0
+ST		halfwindow
+
+LD		mode
+NE		0
+NOT
+
+JMPC		else2_0
+
+while3_0:
+LD		diff
+LT		-180.0
+NOT
+
+JMPC		endwhile3_0
+
+LD		diff
+ADD		360.0
+ST		diff
+
+JMP		while3_0
+
+endwhile3_0:
+while4_0:
+LD		diff
+GT		180.0
+NOT
+
+JMPC		endwhile4_0
+
+LD		diff
+SUB		360.0
+ST		diff
+
+JMP		while4_0
+
+endwhile4_0:
+else2_0:
+end2_0:
+LD		FALSE
+ST		new
+
+LD		pitch
+LT		0
+NOT
+
+JMPC		else5_0
+
+LD		diff
+ADD		halfwindow
+LT		0
+NOT
+
+JMPC		else6_0
+
+LD		pos
+ADD		pitch
+ST		pos
+
+LD		TRUE
+ST		new
+
+else6_0:
+end6_0:
+else5_0:
+end5_0:
+LD		pitch
+GT		0
+NOT
+
+JMPC		else7_0
+
+LD		diff
+SUB		halfwindow
+GT		0
+NOT
+
+JMPC		else8_0
+
+LD		pos
+ADD		pitch
+ST		pos
+
+LD		TRUE
+ST		new
+
+else8_0:
+end8_0:
+else7_0:
+end7_0:
+LD		new
+EQ		TRUE
+NOT
+
+JMPC		else9_0
+
+LD		nr
+NE		0
+
+JMPC		case10_0
+
+LD		pos
+ST		C3ARRAY.Col01_Row10
+
+JMP		endcase10_0
+
+case10_0:
+LD		nr
+NE		1
+
+JMPC		case10_1
+
+LD		pos
+ST		C3ARRAY.Col01_Row11
+
+JMP		endcase10_0
+
+case10_1:
+LD		nr
+NE		2
+
+JMPC		case10_2
+
+LD		pos
+ST		C3ARRAY.Col01_Row12
+
+JMP		endcase10_0
+
+case10_2:
+LD		nr
+NE		3
+
+JMPC		case10_3
+
+LD		pos
+ST		C3ARRAY.Col01_Row13
+
+JMP		endcase10_0
+
+case10_3:
+LD		nr
+NE		4
+
+JMPC		case10_4
+
+LD		pos
+ST		C3ARRAY.Col01_Row14
+
+JMP		endcase10_0
+
+case10_4:
+endcase10_0:
+else9_0:
+end9_0:
+LD		diff
+ABS		
+LE		halfwindow
+NOT
+
+JMPC		else11_0
+
+LD		TRUE
+ST		pulse
+
+RET
+
+else11_0:
+end11_0:
+else1_0:
+end1_0:
+LD		FALSE
+ST		pulse
+
+
+END_FUNCTION
+

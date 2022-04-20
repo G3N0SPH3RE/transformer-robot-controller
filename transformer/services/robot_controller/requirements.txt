@@ -1,0 +1,9 @@
+fastapi==0.70.0
+loguru==0.5.3
+pyserial==3.5
+PyYAML==5.3.1
+pyzmq==22.3.0
+transitions==0.8.10
+uvicorn==0.15.0
+zmq==0.0.0
+websockets==0.0.0
